@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI数学练习</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Microsoft YaHei", sans-serif; background: #f5f7fa; color: #333; min-height: 100vh; }
+
+/* === 导航 === */
+.nav { background: #4f46e5; color: white; padding: 12px 20px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 100; }
+.nav .logo { font-size: 18px; font-weight: bold; }
+.nav .steps { display: flex; gap: 8px; margin-left: auto; }
+.nav .step { padding: 4px 12px; border-radius: 12px; font-size: 13px; background: rgba(255,255,255,0.15); cursor: pointer; transition: all 0.2s; }
+.nav .step.active { background: white; color: #4f46e5; font-weight: bold; }
+.nav .step.done { background: rgba(255,255,255,0.35); }
+
+/* === 页面容器 === */
+.page { display: none; max-width: 800px; margin: 0 auto; padding: 20px; }
+.page.active { display: block; }
+
+/* === 通用 === */
+.card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.card h2 { font-size: 18px; margin-bottom: 12px; color: #1e293b; }
+.btn { display: inline-block; padding: 10px 24px; border-radius: 8px; border: none; font-size: 15px; cursor: pointer; font-weight: 500; transition: all 0.2s; }
+.btn-primary { background: #4f46e5; color: white; }
+.btn-primary:hover { background: #4338ca; }
+.btn-success { background: #16a34a; color: white; }
+.btn-success:hover { background: #15803d; }
+.btn-warning { background: #f59e0b; color: white; }
+.btn-warning:hover { background: #d97706; }
+.btn-outline { background: white; color: #4f46e5; border: 2px solid #4f46e5; }
+.btn-outline:hover { background: #eef2ff; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
+
+/* === 首页 === */
+.grade-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+.grade-card { background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
+.grade-card:hover { border-color: #4f46e5; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(79,70,229,0.15); }
+.grade-card.selected { border-color: #4f46e5; background: #eef2ff; }
+.grade-card .num { font-size: 32px; font-weight: bold; color: #4f46e5; }
+.grade-card .label { font-size: 13px; color: #64748b; margin-top: 4px; }
+.topic-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.topic-tag { padding: 8px 16px; border-radius: 20px; border: 1px solid #d1d5db; background: white; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+.topic-tag:hover { border-color: #4f46e5; color: #4f46e5; }
+.topic-tag.selected { background: #4f46e5; color: white; border-color: #4f46e5; }
+
+/* === 做题页 === */
+.quiz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.quiz-header h2 { margin: 0; }
+.q-section { margin-bottom: 20px; }
+.q-section-title { font-weight: bold; font-size: 15px; color: #4f46e5; margin-bottom: 10px; padding: 6px 10px; background: #eef2ff; border-left: 3px solid #4f46e5; border-radius: 0 6px 6px 0; }
+.q-item { background: white; border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; border: 1px solid #e2e8f0; }
+.q-item .q-text { font-size: 15px; margin-bottom: 8px; }
+.q-item .q-hint { background: #dbeafe; border: 1px solid #93c5fd; border-radius: 6px; padding: 8px 12px; font-size: 13px; color: #1e40af; margin-bottom: 8px; }
+.q-item .q-hint b { color: #1d4ed8; }
+.q-item .q-hint::before { content: "💡 "; }
+.q-item .answer-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.q-item .answer-row label { font-size: 13px; color: #64748b; }
+.q-item .answer-row input { width: 120px; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+
+/* === 批改页 === */
+.grade-mode-tabs { display: flex; gap: 0; margin-bottom: 16px; }
+.grade-mode-tab { flex: 1; padding: 10px; text-align: center; background: #f1f5f9; cursor: pointer; font-size: 14px; border: 1px solid #e2e8f0; }
+.grade-mode-tab:first-child { border-radius: 8px 0 0 8px; }
+.grade-mode-tab:last-child { border-radius: 0 8px 8px 0; }
+.grade-mode-tab.active { background: #4f46e5; color: white; border-color: #4f46e5; }
+.upload-zone { border: 2px dashed #cbd5e1; border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; }
+.upload-zone:hover { border-color: #4f46e5; background: #f8fafc; }
+.upload-zone .icon { font-size: 48px; margin-bottom: 8px; }
+.upload-zone p { color: #64748b; font-size: 14px; }
+.upload-preview { max-width: 100%; border-radius: 8px; margin-top: 12px; }
+.grade-table { width: 100%; border-collapse: collapse; }
+.grade-table th, .grade-table td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: center; font-size: 14px; }
+.grade-table th { background: #f8fafc; font-weight: 500; }
+.grade-table .correct-btn, .grade-table .wrong-btn { padding: 4px 12px; border-radius: 6px; border: 1px solid #d1d5db; cursor: pointer; font-size: 13px; }
+.grade-table .correct-btn { background: #dcfce7; color: #166534; }
+.grade-table .wrong-btn { background: #fee2e2; color: #991b1b; }
+.grade-table .correct-btn.active { background: #16a34a; color: white; border-color: #16a34a; }
+.grade-table .wrong-btn.active { background: #dc2626; color: white; border-color: #dc2626; }
+.grade-table input { width: 100%; padding: 4px 8px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 13px; }
+
+/* === 报告页 === */
+.score-circle { width: 120px; height: 120px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto 16px; font-weight: bold; }
+.score-circle .num { font-size: 36px; }
+.score-circle .label { font-size: 13px; opacity: 0.8; }
+.score-good { background: #dcfce7; color: #166534; border: 3px solid #16a34a; }
+.score-ok { background: #fef9c3; color: #854d0e; border: 3px solid #eab308; }
+.score-bad { background: #fee2e2; color: #991b1b; border: 3px solid #dc2626; }
+.weak-list { list-style: none; }
+.weak-list li { padding: 8px 12px; background: #fef2f2; border-left: 3px solid #ef4444; margin-bottom: 6px; border-radius: 0 6px 6px 0; font-size: 14px; }
+.suggest-list { list-style: none; }
+.suggest-list li { padding: 8px 12px; background: #f0fdf4; border-left: 3px solid #22c55e; margin-bottom: 6px; border-radius: 0 6px 6px 0; font-size: 14px; }
+
+/* === loading === */
+.loading { text-align: center; padding: 40px; }
+.spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid #4f46e5; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* === 打印样式 === */
+@media print {
+  .nav, .no-print { display: none !important; }
+  .page { display: block !important; padding: 0; }
+  body { background: white; }
+  .q-item { break-inside: avoid; border: 1px solid #ddd; }
+}
+</style>
+</head>
+<body>
+
+<!-- 导航栏 -->
+<div class="nav">
+  <div class="logo">🧮 AI数学练习</div>
+  <div class="steps">
+    <div class="step active" onclick="goPage(1)">① 选题</div>
+    <div class="step" onclick="goPage(2)">② 做题</div>
+    <div class="step" onclick="goPage(3)">③ 批改</div>
+    <div class="step" onclick="goPage(4)">④ 报告</div>
+  </div>
+</div>
+
+<!-- ======== 页面1：选题 ======== -->
+<div class="page active" id="page1">
+  <div class="card">
+    <h2>📖 选择科目</h2>
+    <div class="grade-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="grade-card" onclick="selectSubject('数学')"><div class="num" style="font-size:24px;">🔢</div><div class="label" style="font-size:16px; font-weight:bold;">数学</div></div>
+      <div class="grade-card" onclick="selectSubject('语文')"><div class="num" style="font-size:24px;">📝</div><div class="label" style="font-size:16px; font-weight:bold;">语文</div></div>
+      <div class="grade-card" onclick="selectSubject('英语')"><div class="num" style="font-size:24px;">🔤</div><div class="label" style="font-size:16px; font-weight:bold;">英语</div></div>
+    </div>
+  </div>
+  <div class="card" id="gradeCard" style="display:none;">
+    <h2>📚 选择年级</h2>
+    <div class="grade-grid" style="grid-template-columns: repeat(4, 1fr);" id="gradeGrid"></div>
+  </div>
+  <div class="card" id="topicCard" style="display:none;">
+    <h2>✏️ 选择知识点</h2>
+    <div class="topic-list" id="topicList"></div>
+  </div>
+  <div style="text-align:center; margin-top:16px;">
+    <button class="btn btn-primary" id="startBtn" onclick="startQuiz()" disabled>🚀 开始出题</button>
+  </div>
+</div>
+
+<!-- ======== 页面2：做题 ======== -->
+<div class="page" id="page2">
+  <div class="quiz-header">
+    <h2 id="quizTitle">练习题目</h2>
+    <div class="btn-group no-print">
+      <button class="btn btn-outline" onclick="printQuiz()">🖨️ 打印这套题</button>
+      <button class="btn btn-primary" onclick="submitAndGrade()">✅ 做完了，去批改</button>
+    </div>
+  </div>
+  <div id="quizContent">
+    <div class="loading"><div class="spinner"></div><p>AI正在出题中...</p></div>
+  </div>
+  <div class="btn-group no-print" style="margin-top:16px; justify-content:center;">
+    <button class="btn btn-outline" onclick="printQuiz()">🖨️ 打印这套题</button>
+    <button class="btn btn-primary" onclick="submitAndGrade()">✅ 做完了，去批改</button>
+  </div>
+</div>
+
+<!-- ======== 页面3：批改 ======== -->
+<div class="page" id="page3">
+  <div class="card">
+    <h2>✏️ 批改作业</h2>
+    <div class="grade-mode-tabs">
+      <div class="grade-mode-tab active" onclick="switchGradeMode('manual')">手动批改</div>
+      <div class="grade-mode-tab" onclick="switchGradeMode('upload')">📸 拍照上传</div>
+    </div>
+
+    <!-- 拍照上传模式 -->
+    <div id="uploadMode" style="display:none;">
+      <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+        <div class="icon">📷</div>
+        <p>点击上传批改后的试卷照片</p>
+        <p style="font-size:12px; color:#94a3b8; margin-top:4px;">支持 JPG/PNG，AI会自动识别批改痕迹</p>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" style="display:none;" onchange="handleUpload(this)">
+      <div id="uploadPreview"></div>
+      <div style="text-align:center; margin-top:12px;">
+        <button class="btn btn-primary" id="analyzeBtn" onclick="analyzeImage()" style="display:none;">🤖 AI识别批改</button>
+      </div>
+    </div>
+
+    <!-- 手动批改模式 -->
+    <div id="manualMode">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <p style="font-size:13px; color:#64748b;">点击 ✅对 / ❌错 标记每道题的对错，错误题请简要填写原因</p>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-success" style="padding:6px 14px; font-size:13px;" onclick="markAll(true)">✅ 全对</button>
+          <button class="btn" style="padding:6px 14px; font-size:13px; background:#dc2626; color:white;" onclick="markAll(false)">❌ 全错</button>
+        </div>
+      </div>
+      <table class="grade-table" id="gradeTable">
+        <thead><tr><th>题号</th><th>题目</th><th>你的答案</th><th>对错</th><th>错误原因</th></tr></thead>
+        <tbody id="gradeBody"></tbody>
+      </table>
+    </div>
+
+    <div style="text-align:center; margin-top:20px;">
+      <button class="btn btn-success" onclick="submitGrades()">📊 生成分析报告</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======== 页面4：报告 ======== -->
+<div class="page" id="page4">
+  <div class="card" id="reportCard">
+    <div class="loading"><div class="spinner"></div><p>AI正在分析...</p></div>
+  </div>
+  <div class="card" id="actionCard" style="display:none;">
+    <h2>🔄 下一步</h2>
+    <p style="font-size:14px; color:#64748b; margin-bottom:16px;">根据分析结果，你可以选择：</p>
+    <div class="btn-group" style="flex-direction:column;">
+      <button class="btn btn-warning" onclick="nextQuiz('similar')" style="width:100%;">🔁 再做同类题目（巩固练习）</button>
+      <button class="btn btn-primary" onclick="nextQuiz('upgrade')" style="width:100%;">📈 针对性升级（加强薄弱点或增加难度）</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// === 全局状态 ===
+let state = {
+  subject: null,
+  grade: null,
+  topic: null,
+  quizData: null,
+  userAnswers: {},
+  gradeResults: [],
+  feedbackSummary: "",
+  history: []
+};
+
+// === 页面切换 ===
+function goPage(n) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page' + n).classList.add('active');
+  document.querySelectorAll('.nav .step').forEach((s, i) => {
+    s.classList.remove('active', 'done');
+    if (i + 1 === n) s.classList.add('active');
+    else if (i + 1 < n) s.classList.add('done');
+  });
+  window.scrollTo(0, 0);
+}
+
+// === 页面1：选科目/年级/知识点 ===
+function selectSubject(s) {
+  state.subject = s;
+  state.grade = null;
+  state.topic = null;
+  document.querySelectorAll('.card:first-child .grade-card').forEach(c => {
+    const label = c.querySelector('.label').textContent;
+    c.classList.toggle('selected', label === s);
+  });
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('topicCard').style.display = 'none';
+
+  fetch('/api/grades/' + encodeURIComponent(s))
+    .then(r => r.json())
+    .then(grades => {
+      const grid = document.getElementById('gradeGrid');
+      grid.innerHTML = grades.map(g => {
+        const label = g.replace('上', '年级上').replace('下', '年级下');
+        return `<div class="grade-card" onclick="selectGrade('${g}')"><div class="num">${g}</div><div class="label">${label}</div></div>`;
+      }).join('');
+      document.getElementById('gradeCard').style.display = 'block';
+    });
+}
+
+function selectGrade(g) {
+  state.grade = g;
+  state.topic = null;
+  document.getElementById('startBtn').disabled = true;
+  document.querySelectorAll('#gradeGrid .grade-card').forEach(c => {
+    const num = c.querySelector('.num').textContent;
+    c.classList.toggle('selected', num === g);
+  });
+  fetch('/api/topics/' + encodeURIComponent(state.subject) + '/' + encodeURIComponent(g))
+    .then(r => r.json())
+    .then(topics => {
+      const list = document.getElementById('topicList');
+      list.innerHTML = topics.map(t =>
+        `<div class="topic-tag" onclick="selectTopic(this, '${t}')">${t}</div>`
+      ).join('');
+      document.getElementById('topicCard').style.display = 'block';
+    });
+}
+
+function selectTopic(el, topic) {
+  state.topic = topic;
+  document.querySelectorAll('.topic-tag').forEach(t => t.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('startBtn').disabled = false;
+}
+
+// === 出题 ===
+function startQuiz(mode = 'new', feedback = '') {
+  goPage(2);
+  document.getElementById('quizContent').innerHTML =
+    '<div class="loading"><div class="spinner"></div><p>AI正在出题中...</p></div>';
+
+  fetch('/api/generate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ subject: state.subject, grade: state.grade, topic: state.topic, mode, feedback })
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (res.success) {
+      state.quizData = res.data;
+      state.userAnswers = {};
+      renderQuiz(res.data);
+    } else {
+      document.getElementById('quizContent').innerHTML =
+        '<div class="card" style="text-align:center; color:#dc2626;">❌ 出题失败：' + res.error + '</div>';
+    }
+  });
+}
+
+function renderQuiz(data) {
+  let html = `<div class="card"><h2>${data.title || '数学练习'}</h2></div>`;
+  const sections = {};
+  (data.questions || []).forEach(q => {
+    if (!sections[q.section]) sections[q.section] = { title: q.section_title, items: [] };
+    sections[q.section].items.push(q);
+  });
+
+  for (const [sec, s] of Object.entries(sections)) {
+    const isOral = s.items.length > 0 && s.items[0].type === 'oral';
+    html += `<div class="q-section"><div class="q-section-title">${sec}、${s.title}</div>`;
+
+    if (isOral) {
+      // 口算题：3列紧凑排版，适合打印
+      html += '<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:0; margin-bottom:10px;">';
+      s.items.forEach(q => {
+        html += `<div style="padding:6px 10px; border:1px solid #e2e8f0; font-size:14px; display:flex; align-items:center; gap:4px;">
+          <span style="color:#94a3b8; font-size:12px;">${q.id}.</span>
+          <span>${q.question}</span>
+          <input type="text" style="width:50px; padding:2px 4px; border:1px solid #d1d5db; border-radius:4px; font-size:13px; margin-left:auto;" onchange="saveAnswer(${q.id}, this.value)">
+        </div>`;
+      });
+      html += '</div>';
+    } else {
+      s.items.forEach(q => {
+        html += `<div class="q-item" id="q-${q.id}">
+          <div class="q-text">${q.id}. ${q.question}</div>`;
+        if (q.visual) {
+          // visual用|分隔，渲染为对比图示
+          const visualHtml = q.visual
+            .replace(/\|/g, '<span style="display:inline-block; width:2px; height:28px; background:#f59e0b; margin:0 8px; vertical-align:middle;"></span>');
+          html += `<div style="background:#fefce8; border:1px solid #fde68a; border-radius:8px; padding:10px 14px; margin:8px 0; font-size:24px; letter-spacing:4px; line-height:2; display:flex; align-items:center; flex-wrap:wrap;">${visualHtml}</div>`;
+        }
+        if (q.hint) {
+          html += `<div class="q-hint">${q.hint}</div>`;
+        }
+        html += `<div class="answer-row">
+            <label>答：</label>
+            <input type="text" placeholder="写答案..." onchange="saveAnswer(${q.id}, this.value)"></div></div>`;
+      });
+    }
+    html += '</div>';
+  }
+  document.getElementById('quizContent').innerHTML = html;
+}
+
+function saveAnswer(id, val) {
+  state.userAnswers[id] = val;
+}
+
+function printQuiz() {
+  window.print();
+}
+
+// === 页面3：批改 ===
+function submitAndGrade() {
+  goPage(3);
+  renderGradeTable();
+}
+
+function renderGradeTable() {
+  const qs = state.quizData?.questions || [];
+  let html = '';
+  qs.forEach(q => {
+    html += `<tr>
+      <td>${q.id}</td>
+      <td style="text-align:left; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${q.question}</td>
+      <td>${state.userAnswers[q.id] || '—'}</td>
+      <td>
+        <button class="correct-btn" onclick="markGrade(${q.id}, true, this)">✅</button>
+        <button class="wrong-btn" onclick="markGrade(${q.id}, false, this)">❌</button>
+      </td>
+      <td><input type="text" placeholder="错误原因" id="reason-${q.id}"></td>
+    </tr>`;
+  });
+  document.getElementById('gradeBody').innerHTML = html;
+}
+
+function markGrade(id, correct, btn) {
+  const row = btn.closest('tr');
+  row.querySelectorAll('.correct-btn, .wrong-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const idx = state.gradeResults.findIndex(r => r.id === id);
+  const entry = { id, correct, error_type: '' };
+  if (idx >= 0) state.gradeResults[idx] = entry;
+  else state.gradeResults.push(entry);
+}
+
+function markAll(correct) {
+  state.gradeResults = [];
+  document.querySelectorAll('#gradeBody tr').forEach(row => {
+    const btn = correct ? row.querySelector('.correct-btn') : row.querySelector('.wrong-btn');
+    const otherBtn = correct ? row.querySelector('.wrong-btn') : row.querySelector('.correct-btn');
+    if (btn) btn.classList.add('active');
+    if (otherBtn) otherBtn.classList.remove('active');
+    // 从题号提取id
+    const idText = row.querySelector('td')?.textContent;
+    const id = parseInt(idText);
+    if (id) state.gradeResults.push({ id, correct, error_type: '' });
+  });
+}
+
+function switchGradeMode(mode) {
+  document.querySelectorAll('.grade-mode-tab').forEach(t => t.classList.remove('active'));
+  if (mode === 'manual') {
+    document.querySelector('.grade-mode-tab:first-child').classList.add('active');
+    document.getElementById('manualMode').style.display = 'block';
+    document.getElementById('uploadMode').style.display = 'none';
+  } else {
+    document.querySelector('.grade-mode-tab:last-child').classList.add('active');
+    document.getElementById('manualMode').style.display = 'none';
+    document.getElementById('uploadMode').style.display = 'block';
+  }
+}
+
+function handleUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('uploadPreview').innerHTML =
+      `<img src="${e.target.result}" class="upload-preview">`;
+    document.getElementById('analyzeBtn').style.display = 'inline-block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function analyzeImage() {
+  const file = document.getElementById('fileInput').files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('image', file);
+
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('analyzeBtn').textContent = '🤖 识别中...';
+
+  fetch('/api/analyze_image', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(res => {
+      document.getElementById('analyzeBtn').disabled = false;
+      document.getElementById('analyzeBtn').textContent = '🤖 AI识别批改';
+      if (res.success && res.data?.results) {
+        state.gradeResults = res.data.results;
+        // 自动填充手动表格
+        switchGradeMode('manual');
+        res.data.results.forEach(r => {
+          const row = document.getElementById('q-' + r.id)?.closest('tr');
+          if (row) {
+            const btn = r.correct ? row.querySelector('.correct-btn') : row.querySelector('.wrong-btn');
+            if (btn) { btn.classList.add('active'); }
+            const reason = document.getElementById('reason-' + r.id);
+            if (reason && r.error_type) reason.value = r.error_type;
+          }
+        });
+        alert('AI识别完成！请检查后点击"生成分析报告"');
+      } else {
+        alert('识别失败：' + (res.error || '未知错误'));
+      }
+    });
+}
+
+// === 提交批改 ===
+function submitGrades() {
+  // 补充错误原因
+  state.gradeResults.forEach(r => {
+    const reason = document.getElementById('reason-' + r.id);
+    if (reason) r.error_type = reason.value;
+  });
+
+  goPage(4);
+  document.getElementById('reportCard').innerHTML =
+    '<div class="loading"><div class="spinner"></div><p>AI正在分析薄弱点...</p></div>';
+  document.getElementById('actionCard').style.display = 'none';
+
+  fetch('/api/analyze_feedback', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      results: state.gradeResults,
+      subject: state.subject,
+      grade: state.grade,
+      topic: state.topic
+    })
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (res.success) {
+      renderReport(res.data);
+    } else {
+      document.getElementById('reportCard').innerHTML =
+        '<div class="card" style="text-align:center; color:#dc2626;">❌ 分析失败：' + res.error + '</div>';
+    }
+  });
+}
+
+function renderReport(data) {
+  state.feedbackSummary = data.feedback_summary || '';
+  const pct = data.total > 0 ? Math.round(data.score / data.total * 100) : 0;
+  const cls = pct >= 80 ? 'score-good' : pct >= 60 ? 'score-ok' : 'score-bad';
+
+  let html = `<div class="card" style="text-align:center;">
+    <div class="score-circle ${cls}">
+      <div class="num">${pct}</div>
+      <div class="label">分</div>
+    </div>
+    <p style="font-size:14px; color:#64748b;">得分 ${data.score} / ${data.total}</p>
+    <p style="font-size:15px; margin-top:8px; font-weight:500;">${data.error_summary || ''}</p>
+  </div>`;
+
+  if (data.weak_points?.length) {
+    html += '<div class="card"><h2>⚠️ 薄弱点</h2><ul class="weak-list">';
+    data.weak_points.forEach(w => html += `<li>${w}</li>`);
+    html += '</ul></div>';
+  }
+
+  if (data.suggestions?.length) {
+    html += '<div class="card"><h2>💡 学习建议</h2><ul class="suggest-list">';
+    data.suggestions.forEach(s => html += `<li>${s}</li>`);
+    html += '</ul></div>';
+  }
+
+  document.getElementById('reportCard').innerHTML = html;
+  document.getElementById('actionCard').style.display = 'block';
+}
+
+// === 下一套题 ===
+function nextQuiz(mode) {
+  startQuiz(mode, state.feedbackSummary);
+}
+</script>
+</body>
+</html>

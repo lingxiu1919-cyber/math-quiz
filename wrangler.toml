@@ -1,0 +1,10 @@
+name = "math-quiz"
+compatibility_date = "2024-12-01"
+
+# Cloudflare Pages 配置
+# 部署命令: npx wrangler pages deploy .
+# 环境变量在 Cloudflare Dashboard 中设置:
+#   ZHIPU_API_KEY = 你的智谱AI密钥
+#   API_BASE_URL  = https://open.bigmodel.cn/api/paas/v4
+#   MODEL_NAME    = glm-4-flash
+#   VISION_MODEL  = glm-4v-flash
