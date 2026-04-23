@@ -36,17 +36,47 @@ export async function callZhipuAI(env, systemPrompt, userPrompt, options = {}) {
   return await resp.json();
 }
 
-// 从AI回复中提取JSON
+// 从AI回复中提取JSON（健壮版）
 export function extractJSON(text) {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}") + 1;
-  if (start >= 0 && end > start) {
-    let raw = text.substring(start, end);
-    // 清理控制字符
-    raw = raw.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, "");
+  // 1. 去掉 markdown 代码块包裹
+  let cleaned = text
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/g, "")
+    .trim();
+
+  // 2. 找到最外层 { ... }
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}") + 1;
+  if (start < 0 || end <= start) return null;
+
+  let raw = cleaned.substring(start, end);
+
+  // 3. 清理控制字符（保留 \n \t 在字符串值里会被JSON.parse拒绝，所以也清掉）
+  raw = raw.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, "");
+
+  // 4. 修复常见问题：字符串值内的裸换行符
+  //    匹配 "...内容\n内容..." 中的换行并替换为空格
+  raw = raw.replace(/"([^"]*?)"/g, (match, inner) => {
+    return '"' + inner.replace(/[\r\n]+/g, " ") + '"';
+  });
+
+  // 5. 去掉尾部逗号（] , 或 } , 前面的逗号）
+  raw = raw.replace(/,\s*([\]}])/g, "$1");
+
+  try {
     return JSON.parse(raw);
+  } catch (e) {
+    // 最后尝试：更激进地清理
+    // 替换所有非ASCII控制字符
+    raw = raw.replace(/[\x00-\x1f\x7f-\x9f]/g, " ");
+    raw = raw.replace(/,\s*([\]}])/g, "$1");
+    try {
+      return JSON.parse(raw);
+    } catch (e2) {
+      console.error("JSON parse failed:", e2.message, "raw length:", raw.length);
+      return null;
+    }
   }
-  return null;
 }
 
 // 清理AI瞎编的URL

@@ -29,7 +29,8 @@ export async function onRequestPost(context) {
     if (result) {
       result = cleanURLs(result);
     } else {
-      result = { questions: [], title: "解析失败" };
+      // 解析失败时返回原始文本便于调试
+      result = { questions: [], title: "解析失败", raw: text.substring(0, 500) };
     }
 
     return new Response(JSON.stringify({ success: true, data: result }), {
