@@ -1,7 +1,7 @@
 // functions/api/analyze_feedback.js
-// POST /api/analyze_feedback → 手动批改后AI分析薄弱点
+// POST /api/analyze_feedback → DeepSeek 分析薄弱点
 import { getFeedbackPrompt } from "../_shared/prompts.js";
-import { callZhipuAI, extractJSON } from "../_shared/ai.js";
+import { callAI, deepseek, extractJSON } from "../_shared/ai.js";
 
 export async function onRequestPost(context) {
   try {
@@ -13,7 +13,7 @@ export async function onRequestPost(context) {
     const systemPrompt = getFeedbackPrompt();
     const userPrompt = `小学${grade}年级，知识点：${topic}\n学生答题结果：${JSON.stringify(results)}\n请分析薄弱点。`;
 
-    const aiResp = await callZhipuAI(context.env, systemPrompt, userPrompt, {
+    const aiResp = await callAI(deepseek(context.env), systemPrompt, userPrompt, {
       temperature: 0.5,
       maxTokens: 2000
     });

@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, jsonify, session
-import json, os, uuid, base64
+from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
+import json, os, re, base64
 from openai import OpenAI
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+CORS(app)
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
@@ -13,9 +14,19 @@ def load_config():
             return json.load(f)
     return {}
 
-def get_client():
+def get_deepseek_client():
     cfg = load_config()
-    return OpenAI(api_key=cfg.get("api_key", ""), base_url=cfg.get("base_url", ""))
+    return OpenAI(
+        api_key=cfg.get("deepseek_api_key", ""),
+        base_url=cfg.get("deepseek_base_url", "https://api.deepseek.com")
+    )
+
+def get_zhipu_client():
+    cfg = load_config()
+    return OpenAI(
+        api_key=cfg.get("zhipu_api_key", ""),
+        base_url=cfg.get("zhipu_base_url", "https://open.bigmodel.cn/api/paas/v4")
+    )
 
 def _math_prompt():
     return """你是一位严谨的小学数学出题专家。输出纯JSON，不要任何多余文字。
@@ -134,6 +145,7 @@ def get_topics(subject, grade):
 
 @app.route("/api/generate", methods=["POST"])
 def generate():
+    """DeepSeek 出题"""
     data = request.json
     subject = data.get("subject", "数学")
     grade = data.get("grade", "1下")
@@ -142,7 +154,7 @@ def generate():
     feedback = data.get("feedback", "")
 
     cfg = load_config()
-    model = cfg.get("model_name", "deepseek-chat")
+    model = cfg.get("deepseek_model", "deepseek-chat")
 
     if subject == "数学":
         system_prompt = _math_prompt()
@@ -161,7 +173,7 @@ def generate():
         user_prompt = f"小学{grade}，{subject}，知识点：{topic}\n请出一套练习题。"
 
     try:
-        client = get_client()
+        client = get_deepseek_client()
         resp = client.chat.completions.create(
             model=model,
             messages=[
@@ -172,15 +184,12 @@ def generate():
             max_tokens=4000
         )
         text = resp.choices[0].message.content
-        # 尝试提取JSON，清理控制字符
         start = text.find('{')
         end = text.rfind('}') + 1
         if start >= 0 and end > start:
             raw = text[start:end]
-            import re
             raw = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', raw)
             result = json.loads(raw, strict=False)
-            # 清理模型瞎编的URL
             for q in result.get("questions", []):
                 for field in ["question", "visual", "hint"]:
                     if q.get(field):
@@ -194,7 +203,7 @@ def generate():
 
 @app.route("/api/analyze_image", methods=["POST"])
 def analyze_image():
-    """上传批改图片，AI识别对错"""
+    """智谱GLM-4.6V 读图判卷"""
     if "image" not in request.files:
         return jsonify({"success": False, "error": "没有上传图片"})
 
@@ -202,10 +211,10 @@ def analyze_image():
     img_data = base64.b64encode(file.read()).decode()
 
     cfg = load_config()
-    model = cfg.get("vision_model", cfg.get("model_name", "glm-4.6v"))
+    model = cfg.get("zhipu_vision_model", "glm-4v-flash")
 
     try:
-        client = get_client()
+        client = get_zhipu_client()
         resp = client.chat.completions.create(
             model=model,
             messages=[
@@ -226,14 +235,14 @@ def analyze_image():
 
 @app.route("/api/analyze_feedback", methods=["POST"])
 def analyze_feedback():
-    """手动批改后，AI分析薄弱点"""
+    """DeepSeek 分析薄弱点"""
     data = request.json
-    results = data.get("results", [])  # [{id, correct, error_type}]
+    results = data.get("results", [])
     grade = data.get("grade", "1")
     topic = data.get("topic", "")
 
     cfg = load_config()
-    model = cfg.get("model_name", "deepseek-chat")
+    model = cfg.get("deepseek_model", "deepseek-chat")
 
     system_prompt = """你是小学数学学习分析专家。根据学生的答题情况分析薄弱点并给出学习建议。
 输出JSON格式：
@@ -247,7 +256,7 @@ def analyze_feedback():
 }"""
 
     try:
-        client = get_client()
+        client = get_deepseek_client()
         resp = client.chat.completions.create(
             model=model,
             messages=[
@@ -262,7 +271,6 @@ def analyze_feedback():
         end = text.rfind('}') + 1
         if start >= 0 and end > start:
             raw = text[start:end]
-            import re
             raw = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', raw)
             result = json.loads(raw, strict=False)
         else:

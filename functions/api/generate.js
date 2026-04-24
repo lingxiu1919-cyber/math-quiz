@@ -1,7 +1,7 @@
 // functions/api/generate.js
-// POST /api/generate → AI出题
+// POST /api/generate → DeepSeek 出题
 import { getSystemPrompt } from "../_shared/prompts.js";
-import { callZhipuAI, extractJSON, cleanURLs } from "../_shared/ai.js";
+import { callAI, deepseek, extractJSON, cleanURLs } from "../_shared/ai.js";
 
 export async function onRequestPost(context) {
   try {
@@ -22,14 +22,13 @@ export async function onRequestPost(context) {
     }
 
     const systemPrompt = getSystemPrompt(subject);
-    const aiResp = await callZhipuAI(context.env, systemPrompt, userPrompt);
+    const aiResp = await callAI(deepseek(context.env), systemPrompt, userPrompt);
     const text = aiResp.choices[0].message.content;
 
     let result = extractJSON(text);
     if (result) {
       result = cleanURLs(result);
     } else {
-      // 解析失败时返回原始文本便于调试
       result = { questions: [], title: "解析失败", raw: text.substring(0, 500) };
     }
 

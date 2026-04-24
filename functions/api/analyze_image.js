@@ -1,6 +1,6 @@
 // functions/api/analyze_image.js
-// POST /api/analyze_image → 上传图片AI识别批改
-import { callZhipuAI, extractJSON } from "../_shared/ai.js";
+// POST /api/analyze_image → 智谱GLM-4.6V 读图判卷
+import { callAI, zhipu, extractJSON } from "../_shared/ai.js";
 
 export async function onRequestPost(context) {
   try {
@@ -22,7 +22,7 @@ export async function onRequestPost(context) {
     }
     const imgBase64 = btoa(binary);
 
-    const visionModel = context.env.VISION_MODEL || "glm-4v-flash";
+    const provider = zhipu(context.env);
     const systemPrompt = '你是一位数学老师，看图片中的批改痕迹，判断每道题对错。输出JSON格式：{"results": [{"question_id": 1, "correct": true/false, "error_type": "错误类型简述"}]}';
 
     const messages = [
@@ -36,8 +36,7 @@ export async function onRequestPost(context) {
       }
     ];
 
-    const aiResp = await callZhipuAI(context.env, "", "", {
-      model: visionModel,
+    const aiResp = await callAI(provider, "", "", {
       temperature: 0.3,
       maxTokens: 2000,
       messages
