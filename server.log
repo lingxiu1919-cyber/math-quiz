@@ -1,0 +1,5 @@
+[1]+: command not found
+aceback (most recent call last):
+  File "/mnt/c/math-quiz/app.py", line 1, in <module>
+    from flask import Flask, render_template, request, jsonify
+ModuleNotFoundError: No module named 'flask'

@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
-import json, os, re, base64
+import json, os, re, base64, time
 from openai import OpenAI
 
 app = Flask(__name__)
@@ -18,7 +18,8 @@ def get_deepseek_client():
     cfg = load_config()
     return OpenAI(
         api_key=cfg.get("deepseek_api_key", ""),
-        base_url=cfg.get("deepseek_base_url", "https://api.deepseek.com")
+        base_url=cfg.get("deepseek_base_url", "https://api.deepseek.com"),
+        timeout=120.0
     )
 
 def get_zhipu_client():
@@ -174,16 +175,26 @@ def generate():
 
     try:
         client = get_deepseek_client()
-        resp = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.7,
-            max_tokens=4000
-        )
-        text = resp.choices[0].message.content
+        last_err = None
+        for attempt in range(3):
+            try:
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=4000
+                )
+                text = resp.choices[0].message.content
+                break
+            except Exception as retry_err:
+                last_err = retry_err
+                if attempt < 2:
+                    time.sleep(3 * (attempt + 1))
+                    continue
+                raise last_err
         start = text.find('{')
         end = text.rfind('}') + 1
         if start >= 0 and end > start:
@@ -257,16 +268,26 @@ def analyze_feedback():
 
     try:
         client = get_deepseek_client()
-        resp = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"小学{grade}年级，知识点：{topic}\n学生答题结果：{json.dumps(results, ensure_ascii=False)}\n请分析薄弱点。"}
-            ],
-            temperature=0.5,
-            max_tokens=2000
-        )
-        text = resp.choices[0].message.content
+        last_err = None
+        for attempt in range(3):
+            try:
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"小学{grade}年级，知识点：{topic}\n学生答题结果：{json.dumps(results, ensure_ascii=False)}\n请分析薄弱点。"}
+                    ],
+                    temperature=0.5,
+                    max_tokens=2000
+                )
+                text = resp.choices[0].message.content
+                break
+            except Exception as retry_err:
+                last_err = retry_err
+                if attempt < 2:
+                    time.sleep(3 * (attempt + 1))
+                    continue
+                raise last_err
         start = text.find('{')
         end = text.rfind('}') + 1
         if start >= 0 and end > start:
